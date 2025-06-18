@@ -2,52 +2,79 @@ package fr.classcord.network;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientInvite {
 
     private Socket socket;
-    private PrintWriter writer;
-    private BufferedReader reader;
+    private BufferedReader in;
+    private BufferedWriter out;
 
-    private String pseudo;
+    private final List<MessageListener> listeners = new ArrayList<>();
+    private boolean listening = false;
 
-    public void connect(String ip, int port, String pseudo) {
-        try {
-            this.pseudo = pseudo;
-            socket = new Socket(ip, port);
-            writer = new PrintWriter(socket.getOutputStream(), true);
-            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    // Connexion au serveur
+    public void connect(String ip, int port) throws IOException {
+        if (socket != null && socket.isConnected()) return;
 
-            System.out.println(" Connecté au serveur " + ip + ":" + port);
+        socket = new Socket(ip, port);
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
+        out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
 
-            // Thread pour écouter les messages entrants
-            new Thread(() -> {
+        startListening();
+    }
+
+    // Démarrage du thread d'écoute des messages
+    private void startListening() {
+        if (listening) return;
+        listening = true;
+
+        Thread listenerThread = new Thread(() -> {
+            try {
                 String line;
-                try {
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println("📨 Message reçu : " + line);
+                while ((line = in.readLine()) != null) {
+                    for (MessageListener listener : listeners) {
+                        listener.onMessage(line);
                     }
-                } catch (IOException e) {
-                    System.out.println(" Erreur de lecture : " + e.getMessage());
                 }
-            }).start();
+            } catch (IOException e) {
+                System.err.println("[ClientInvite] Erreur d'écoute : " + e.getMessage());
+            } finally {
+                close();
+            }
+        });
+        listenerThread.setDaemon(true);
+        listenerThread.start();
+    }
 
-        } catch (IOException e) {
-            System.out.println(" Impossible de se connecter : " + e.getMessage());
+    // Envoi d'un message (JSON en string)
+    public void send(String message) throws IOException {
+        if (out != null) {
+            out.write(message);
+            out.write("\n");
+            out.flush();
         }
     }
 
-    public void send(String messageText) {
-        if (writer != null) {
-            writer.println(messageText); // JSON déjà formé
-        }
+    // Ajout d'un écouteur de message
+    public void addMessageListener(MessageListener listener) {
+        listeners.add(listener);
     }
 
-    public void disconnect() {
+    // Fermeture de la connexion
+    public void close() {
+        listening = false;
         try {
+            if (in != null) in.close();
+            if (out != null) out.close();
             if (socket != null) socket.close();
-        } catch (IOException e) {
-            System.out.println(" Erreur à la déconnexion.");
+        } catch (IOException ignored) {
         }
+    }
+
+    // Interface de callback
+    public interface MessageListener {
+        void onMessage(String message);
     }
 }
