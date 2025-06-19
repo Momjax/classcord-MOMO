@@ -5,10 +5,12 @@ import org.json.JSONObject;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
+import java.util.List;
 
 public class ChatFrame extends JFrame {
+
     private String username;
     private JTextField messageField;
     private JButton sendButton;
@@ -17,99 +19,191 @@ public class ChatFrame extends JFrame {
 
     private ClientInvite client;
 
-    // Map pour stocker la couleur de chaque utilisateur
-    private Map<String, Color> userColors = new HashMap<>();
+    private Set<String> onlineUsers = new HashSet<>();
+
+    private DefaultListModel<String> userListModel = new DefaultListModel<>();
+    private JList<String> userList = new JList<>(userListModel);
+
+    private JLabel conversationLabel;
 
     public ChatFrame(ClientInvite client, String username) {
-        this.username = username;
         this.client = client;
+        this.username = username;
 
         setTitle("Classcord - Connecté en tant que " + username);
-        setSize(500, 600);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(700, 600);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
         setLayout(new BorderLayout());
 
-        // Zone messages
+        // Zone affichage des messages
         messagePanel = new JPanel();
         messagePanel.setLayout(new BoxLayout(messagePanel, BoxLayout.Y_AXIS));
         scrollPane = new JScrollPane(messagePanel);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Zone envoi
+        // Liste utilisateurs
+        userList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane userListScroll = new JScrollPane(userList);
+        userListScroll.setPreferredSize(new Dimension(150, 0));
+        add(userListScroll, BorderLayout.EAST);
+
+        // Panel du bas (saisie + bouton)
         JPanel inputPanel = new JPanel(new BorderLayout());
         messageField = new JTextField();
         sendButton = new JButton("Envoyer");
-
         inputPanel.add(messageField, BorderLayout.CENTER);
         inputPanel.add(sendButton, BorderLayout.EAST);
         add(inputPanel, BorderLayout.SOUTH);
 
+        // Label au-dessus des messages
+        conversationLabel = new JLabel("Discussion : Global");
+        conversationLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        add(conversationLabel, BorderLayout.NORTH);
+
+        // Action envoyer message
         sendButton.addActionListener(e -> sendMessage());
         messageField.addActionListener(e -> sendMessage());
 
-        // Ajout du listener pour recevoir les messages
+        // Listener changement de sélection
+        userList.addListSelectionListener(e -> updateConversationLabel());
+
+        // Écoute des messages reçus
         client.addMessageListener(message -> {
             SwingUtilities.invokeLater(() -> {
                 try {
                     JSONObject json = new JSONObject(message);
-                    if (json.getString("type").equals("message")) {
-                        String from = json.getString("from");
-                        String content = json.getString("content");
-                        displayMessage(from, content);
+                    String type = json.getString("type");
+
+                    switch (type) {
+                        case "message":
+                            handleMessage(json);
+                            break;
+                        case "status":
+                            handleStatus(json);
+                            break;
+                        case "users":
+                            handleListUsersResponse(json);
+                            break;
                     }
-                } catch (Exception ignored) {
-                }
+                } catch (Exception ignored) {}
             });
         });
+
+        // Ajoute l'utilisateur lui-même
+        onlineUsers.add(username);
+        refreshUserList();
+
+        // Demande la liste des utilisateurs connectés
+        requestOnlineUsersList();
 
         setVisible(true);
     }
 
-    private void sendMessage() {
-        String text = messageField.getText().trim();
-        if (!text.isEmpty()) {
-            try {
-                JSONObject json = new JSONObject();
-                json.put("type", "message");
-                json.put("from", username);
-                json.put("content", text);
-                client.send(json.toString());
-
-                displayMessage(username, text);
-                messageField.setText("");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    private void requestOnlineUsersList() {
+        try {
+            JSONObject request = new JSONObject();
+            request.put("type", "users");
+            client.send(request.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    public void displayMessage(String from, String content) {
-        boolean isMine = from.equals(username);
+    private void handleListUsersResponse(JSONObject json) {
+        onlineUsers.clear();
+        onlineUsers.add(username); // sécurité
+        for (Object obj : json.getJSONArray("users")) {
+            String user = (String) obj;
+            onlineUsers.add(user);
+        }
+        refreshUserList();
+    }
 
-        // Panel contenant le message, pour alignement à droite ou gauche
-        JPanel messagePanelLine = new JPanel();
-        messagePanelLine.setLayout(new BoxLayout(messagePanelLine, BoxLayout.X_AXIS));
-        messagePanelLine.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+    private void handleMessage(JSONObject json) {
+        String from = json.getString("from");
+        String content = json.getString("content");
+        String subtype = json.optString("subtype", "global");
 
-        // Label avec pseudo + message, couleur noire pour toi, couleur unique pour les autres
-        JLabel label = new JLabel(from + " : " + content);
-        label.setFont(new Font("Arial", Font.PLAIN, 14));
-        label.setForeground(isMine ? Color.BLACK : getUserColor(from));
-
-        if (isMine) {
-            // Alignement à droite: ajouter "glue" à gauche
-            messagePanelLine.add(Box.createHorizontalGlue());
-            messagePanelLine.add(label);
+        if ("private".equals(subtype)) {
+            String to = json.optString("to", "");
+            if (from.equals(username) || to.equals(username)) {
+                displayMessage("MP de " + from, content, "private");
+            }
         } else {
-            // Alignement à gauche: label à gauche + glue à droite
-            messagePanelLine.add(label);
-            messagePanelLine.add(Box.createHorizontalGlue());
+            displayMessage(from, content, "global");
+        }
+    }
+
+    private void handleStatus(JSONObject json) {
+        String user = json.getString("user");
+        String state = json.getString("state");
+
+        if ("online".equals(state)) {
+            onlineUsers.add(user);
+        } else if ("offline".equals(state)) {
+            onlineUsers.remove(user);
+        }
+        refreshUserList();
+    }
+
+    private void sendMessage() {
+        String text = messageField.getText().trim();
+        if (text.isEmpty()) return;
+
+        JSONObject json = new JSONObject();
+        json.put("type", "message");
+        json.put("from", username);
+        json.put("content", text);
+
+        String selectedUser = userList.getSelectedValue();
+
+        if (selectedUser != null && !selectedUser.equals("Global") && !selectedUser.equals(username)) {
+            json.put("subtype", "private");
+            json.put("to", selectedUser);
+            displayMessage("Moi → " + selectedUser, text, "private");
+        } else {
+            json.put("subtype", "global");
+            displayMessage(username, text, "global");
         }
 
-        messagePanelLine.setAlignmentX(Component.LEFT_ALIGNMENT);
-        messagePanel.add(messagePanelLine);
+        try {
+            client.send(json.toString());
+            messageField.setText("");
+        } catch (IOException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Erreur lors de l'envoi du message", "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void displayMessage(String from, String content, String subtype) {
+        JPanel messageLine = new JPanel();
+        messageLine.setLayout(new BoxLayout(messageLine, BoxLayout.X_AXIS));
+        messageLine.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
+        boolean isMine = from.startsWith("Moi") || from.equals(username);
+        JLabel label;
+
+        if ("private".equals(subtype)) {
+            label = new JLabel("**[MP] " + from + ": " + content);
+            label.setForeground(Color.MAGENTA);
+            label.setFont(new Font("Arial", Font.ITALIC, 14));
+        } else {
+            label = new JLabel(from + " : " + content);
+            label.setForeground(isMine ? Color.BLACK : Color.BLUE);
+            label.setFont(new Font("Arial", Font.PLAIN, 14));
+        }
+
+        if (isMine) {
+            messageLine.add(Box.createHorizontalGlue());
+            messageLine.add(label);
+        } else {
+            messageLine.add(label);
+            messageLine.add(Box.createHorizontalGlue());
+        }
+
+        messageLine.setAlignmentX(Component.LEFT_ALIGNMENT);
+        messagePanel.add(messageLine);
         messagePanel.revalidate();
         messagePanel.repaint();
 
@@ -119,23 +213,33 @@ public class ChatFrame extends JFrame {
         });
     }
 
-    // Génère ou récupère une couleur unique par utilisateur
-    private Color getUserColor(String username) {
-        if (userColors.containsKey(username)) {
-            return userColors.get(username);
+    private void refreshUserList() {
+        userListModel.clear();
+
+        // Ajoute "Global" tout en haut
+        userListModel.addElement("Global");
+
+        List<String> sortedUsers = new ArrayList<>(onlineUsers);
+        Collections.sort(sortedUsers);
+
+        for (String user : sortedUsers) {
+            userListModel.addElement(user);
         }
-        int hash = username.hashCode();
 
-        int r = (hash & 0xFF0000) >> 16;
-        int g = (hash & 0x00FF00) >> 8;
-        int b = (hash & 0x0000FF);
+        // Sélectionne "Global" par défaut
+        if (userList.getSelectedValue() == null) {
+            userList.setSelectedIndex(0);
+        }
 
-        r = 50 + (r % 150);
-        g = 50 + (g % 150);
-        b = 50 + (b % 150);
+        updateConversationLabel();
+    }
 
-        Color color = new Color(r, g, b);
-        userColors.put(username, color);
-        return color;
+    private void updateConversationLabel() {
+        String selected = userList.getSelectedValue();
+        if (selected == null || selected.equals("Global")) {
+            conversationLabel.setText("Discussion : Global");
+        } else {
+            conversationLabel.setText("Discussion : MP avec " + selected);
+        }
     }
 }
