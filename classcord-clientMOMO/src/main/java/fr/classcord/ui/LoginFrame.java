@@ -16,18 +16,21 @@ public class LoginFrame extends JFrame {
     private JPasswordField passwordField = new JPasswordField("1234");
     private JButton loginButton = new JButton("Se connecter");
     private JButton registerButton = new JButton("S'inscrire");
+    private JButton guestButton = new JButton("Invité");
     private JLabel statusLabel = new JLabel(" ");
 
     private ClientInvite client;
-    private boolean listenerAdded = false; // Pour ne pas ajouter plusieurs fois
+    private boolean listenerAdded = false;
+
+    // mode invité ou non
+    private boolean isGuestMode = false;
 
     public LoginFrame(ClientInvite client) {
         super("Connexion");
-
         this.client = client;
 
-        setLayout(new GridLayout(7, 2, 5, 5));
-        setSize(350, 250);
+        setLayout(new GridLayout(8, 2, 5, 5));
+        setSize(350, 280);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -39,24 +42,39 @@ public class LoginFrame extends JFrame {
         add(usernameField);
         add(new JLabel("Mot de passe :"));
         add(passwordField);
+
         add(loginButton);
         add(registerButton);
+        add(guestButton);
         add(statusLabel);
 
-        loginButton.addActionListener(new LoginListener());
-        registerButton.addActionListener(e -> {
-            // Ouvre la fenêtre d'inscription sans fermer celle-ci
-            new RegisterFrame(client);
-        });
+        // Action boutons
+        loginButton.addActionListener(e -> handleConnection("login"));
+        registerButton.addActionListener(e -> new RegisterFrame(client));
+        guestButton.addActionListener(e -> toggleGuestMode());
 
         setVisible(true);
     }
 
-    private class LoginListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            handleConnection("login");
+    private void toggleGuestMode() {
+        isGuestMode = !isGuestMode;
+        if (isGuestMode) {
+            usernameField.setVisible(false);
+            passwordField.setVisible(false);
+            // Supprimer les labels qui précèdent username et password
+            ((Container)usernameField.getParent()).getComponent(4).setVisible(false); // label "Nom d'utilisateur"
+            ((Container)passwordField.getParent()).getComponent(6).setVisible(false); // label "Mot de passe"
+            loginButton.setText("Se connecter en invité");
+        } else {
+            usernameField.setVisible(true);
+            passwordField.setVisible(true);
+            ((Container)usernameField.getParent()).getComponent(4).setVisible(true);
+            ((Container)passwordField.getParent()).getComponent(6).setVisible(true);
+            loginButton.setText("Se connecter");
         }
+        // Réorganiser la fenêtre
+        revalidate();
+        repaint();
     }
 
     private void handleConnection(String actionType) {
@@ -69,23 +87,23 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        String username = usernameField.getText().trim();
-        String password = new String(passwordField.getPassword());
+        String username = isGuestMode ? "Invité" + System.currentTimeMillis() : usernameField.getText().trim();
+        String password = isGuestMode ? "" : new String(passwordField.getPassword());
 
-        if (username.isEmpty() || password.isEmpty()) {
+        if (!isGuestMode && (username.isEmpty() || password.isEmpty())) {
             statusLabel.setText("Veuillez remplir tous les champs");
             return;
         }
 
         loginButton.setEnabled(false);
         registerButton.setEnabled(false);
+        guestButton.setEnabled(false);
         statusLabel.setText("Connexion en cours...");
 
         new Thread(() -> {
             try {
                 client.connect(ip, port);
 
-                // Ajoute le listener une seule fois
                 if (!listenerAdded) {
                     client.addMessageListener(message -> {
                         SwingUtilities.invokeLater(() -> {
@@ -101,11 +119,13 @@ public class LoginFrame extends JFrame {
                                     statusLabel.setText("Erreur : " + response.optString("message", "Inconnue"));
                                     loginButton.setEnabled(true);
                                     registerButton.setEnabled(true);
+                                    guestButton.setEnabled(true);
                                 }
                             } catch (Exception ex) {
                                 statusLabel.setText("Erreur JSON");
                                 loginButton.setEnabled(true);
                                 registerButton.setEnabled(true);
+                                guestButton.setEnabled(true);
                             }
                         });
                     });
@@ -115,14 +135,16 @@ public class LoginFrame extends JFrame {
                 JSONObject json = new JSONObject();
                 json.put("type", actionType);
                 json.put("username", username);
-                json.put("password", password);
+                json.put("password", password); // toujours présent, même vide
                 client.send(json.toString());
+
 
             } catch (Exception ex) {
                 SwingUtilities.invokeLater(() -> {
                     statusLabel.setText("Erreur de connexion : " + ex.getMessage());
                     loginButton.setEnabled(true);
                     registerButton.setEnabled(true);
+                    guestButton.setEnabled(true);
                 });
             }
         }).start();
