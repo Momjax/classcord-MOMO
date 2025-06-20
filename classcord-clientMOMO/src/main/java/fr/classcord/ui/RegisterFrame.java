@@ -10,7 +10,7 @@ import java.awt.event.ActionListener;
 
 public class RegisterFrame extends JFrame {
 
-    private JTextField ipField = new JTextField("10.0.108.5");
+    private JTextField ipField = new JTextField("10.0.108.133");
     private JTextField portField = new JTextField("12345");
     private JTextField usernameField = new JTextField();
     private JPasswordField passwordField = new JPasswordField();
