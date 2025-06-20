@@ -117,7 +117,7 @@ Changer son statut via le menu dédié
 
 Observer la liste des utilisateurs connectés mise à jour en temps réel
 
-Difficultés rencontrées
+# Difficultés rencontrées
 Synchronisation entre threads réseau et Swing (SwingUtilities.invokeLater)
 
 Gestion des multiples types de messages JSON
