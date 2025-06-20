@@ -1,159 +1,137 @@
-ClassCord Client – Projet Semaine Intensive SLAM – BTS SIO 2025
-Auteur :
-[Ton Nom ici]
+ClassCord Client – Projet BTS SIO SLAM 2025
+Auteur : Mohamed BOUKHATEM
+Option : BTS SIO - SLAM
+Dépôt GitHub : https://github.com/Momjax/classcord-MOMO
 
-Classe : BTS SIO - Option SLAM
+Description
+ClassCord est un client de messagerie instantanée développé en Java Swing dans le cadre du BTS SIO option SLAM. Il se connecte à un serveur ClassCord via TCP et échange des messages au format JSON. L’application supporte :
 
-Dépôt GitHub :
-[Lien vers ton dépôt GitHub]
+Inscription et connexion avec identifiants
 
-Environnement de travail :
-Système d’exploitation : Windows 11
+Chat global et chat privé
 
-IDE : VSCode
+Connexion en invité avec pseudo libre
 
-Java : OpenJDK 17
+Affichage dynamique de la liste des utilisateurs connectés avec gestion des statuts
 
-Maven : 3.9.x
+Gestion des erreurs et retours du serveur
 
-Bibliothèque JSON : org.json:json:20231013
+Fonctionnalités principales
+Interface graphique Swing avec fenêtres dédiées :
 
-Jour 1 – Lundi : Initialisation du projet
-Objectifs atteints :
-Création du projet Maven avec l’architecture recommandée
+LoginFrame : connexion / inscription
 
-Ajout de la dépendance JSON dans pom.xml
+RegisterFrame : inscription utilisateur
 
-Mise en place de la structure MVC :
+ChatFrame : chat avec affichage des messages et liste des utilisateurs
 
-fr.classcord.model
+Communication TCP via JSON (classe ClientInvite)
 
-fr.classcord.network
+Thread dédié à la réception asynchrone des messages
 
-fr.classcord.ui
+Envoi de messages globaux et privés avec différenciation visuelle
 
-fr.classcord.app
+Affichage dynamique et mise à jour des statuts utilisateurs (disponible, absent, invisible)
 
-Création des classes métier :
+Gestion de la connexion en invité
 
-Message : contient les attributs type, subtype, from, to, content, timestamp
+Gestion des erreurs serveur (nom utilisé, erreurs JSON, échec connexion)
 
-User : contient les attributs username, status
+Structure du projet
+fr.classcord.model : classes métier (User, Message, etc.)
 
-Compilation testée avec succès
+fr.classcord.network : gestion de la connexion réseau (ClientInvite)
 
-Commandes utilisées :
-bash
-Copier
-Modifier
-mvn archetype:generate -DgroupId=fr.classcord -DartifactId=classcord-client -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
-xml
-Copier
-Modifier
-<!-- Dépendance JSON ajoutée à pom.xml -->
-<dependency>
-  <groupId>org.json</groupId>
-  <artifactId>json</artifactId>
-  <version>20231013</version>
-</dependency>
-Difficultés rencontrées :
-Problème de dépendance non chargée : résolu en rechargeant le projet (Reload Project)
+fr.classcord.ui : interfaces graphiques Swing
 
-Organisation initiale des packages un peu confuse au départ, corrigée rapidement
+fr.classcord.app : classe principale et démarrage
 
-Jour 2 – Mardi : Connexion au serveur et tchat invité
-Objectifs atteints :
-Création de la classe ClientInvite permettant de :
+Installation et configuration
+Prérequis
+Java JDK 17 ou supérieur
 
-Se connecter à un serveur via IP + port
+Maven installé sur la machine
 
-Envoyer un message JSON formaté
+Bibliothèque JSON (org.json) dans le classpath (gérée via Maven)
 
-Écouter les messages entrants en parallèle (thread)
+Serveur ClassCord accessible (adresse IP + port)
 
-Interface console de test opérationnelle
+Déroulement du projet – Planning détaillé
+Jour 1 - Lundi : Mise en place du projet et modélisation
+Création du projet Maven sous VSCode
 
-Réception en temps réel des messages affichée dans la console
+Ajout de la dépendance org.json dans pom.xml
 
-Exemple de message envoyé :
-json
-Copier
-Modifier
-{
-  "type": "message",
-  "subtype": "global",
-  "to": "global",
-  "from": "pseudoInvité",
-  "content": "Hello tout le monde !"
-}
-Difficultés rencontrées :
-Nécessité d’encapsuler les envois dans un thread séparé pour ne pas bloquer la console
+Création de la structure MVC (model, network, ui, app)
 
-Gestion du BufferedReader pour lecture continue non-triviale (EOF géré)
+Implémentation des classes métier User et Message
 
-Bonus :
-Méthodes toJson() et fromJson() ajoutées dans la classe Message
+Vérification de la compilation et test minimal (Hello ClassCord)
 
-Interface Swing très simple (champ + zone de log)
+Jour 2 - Mardi : Connexion au serveur et chat en mode invité
+Création de la classe ClientInvite pour la connexion TCP
 
-Jour 3 – Mercredi : Authentification et login utilisateur
-Objectifs atteints :
-Création d’une interface Swing de login/inscription
+Envoi et réception de messages JSON en mode invité
 
-Envoi des identifiants au serveur via JSON
+Affichage des messages reçus dans la console ou UI Swing basique
 
-Réception et traitement de la réponse serveur
+Thread dédié à la réception des messages pour éviter le blocage
 
-Affichage conditionnel selon succès ou échec
+Jour 3 - Mercredi : Authentification et gestion des comptes
+Implémentation des fenêtres d'inscription et connexion (Swing)
 
-Création d’un objet CurrentUser en mémoire après login réussi
+Envoi des identifiants (login/register) au serveur via JSON
 
-Passage fluide de la fenêtre de login à la fenêtre principale du tchat
+Affichage dynamique des erreurs ou succès reçus
 
-Exemple de message JSON – Connexion :
-json
-Copier
-Modifier
-{
-  "type": "login",
-  "username": "alice",
-  "password": "azerty"
-}
-Difficultés rencontrées :
-Gestion de la sécurité du champ mot de passe : implémenté via JPasswordField
+Passage fluide vers la fenêtre de chat après authentification réussie
 
-Problèmes de synchronisation d’affichage corrigés avec SwingUtilities.invokeLater()
+Jour 4 - Jeudi : Messages privés et liste des utilisateurs
+Récupération et affichage dynamique de la liste des utilisateurs connectés avec leur statut
 
-Bonus :
-Mémorisation du dernier pseudo utilisé (via fichier local .last_user)
+Gestion de l’envoi de messages privés ciblés
 
-Ajout d’un effet de “chargement” pendant la tentative de login
+Affichage différencié des messages privés et globaux dans l’interface
 
-Instructions de lancement
-Étapes :
-Cloner le dépôt GitHub :
+Jour 5 - Vendredi : Gestion des statuts et finalisation
+Ajout d’un menu pour changer le statut utilisateur (disponible, absent, invisible)
 
-bash
-Copier
-Modifier
-git clone https://github.com/[ton-identifiant]/classcord-client.git
-cd classcord-client
-Compiler et exécuter le client :
+Envoi et affichage des statuts dans la liste des utilisateurs
 
-bash
-Copier
-Modifier
-mvn clean install
-mvn exec:java -Dexec.mainClass="fr.classcord.app.Main"
-Connexion au serveur :
+Amélioration graphique de l’interface Swing
 
-IP : 10.0.108.83 (remplacer si besoin)
+Tests complets, correction des bugs
 
-Port : 12345
+Préparation des livrables techniques et documentation
 
-Mode : invité ou login avec identifiants
+Utilisation
+Lancer le serveur ClassCord (local ou distant) -> Partie SISR
 
-Liens utiles
-Dépôt du serveur ClassCord (par Louka)
+Lancer le client ClassCord via la fenêtre de login
 
-Documentation protocole JSON
+Se connecter avec identifiants ou en invité
+
+Utiliser la fenêtre de chat pour envoyer/recevoir des messages globaux ou privés
+
+Changer son statut via le menu dédié
+
+Observer la liste des utilisateurs connectés mise à jour en temps réel
+
+Difficultés rencontrées
+Synchronisation entre threads réseau et Swing (SwingUtilities.invokeLater)
+
+Gestion des multiples types de messages JSON
+
+Passage fluide entre fenêtres (inscription → connexion → chat)
+
+Gestion des fermetures et réouvertures TCP
+
+Affichage dynamique et mise à jour en temps réel des statuts utilisateurs
+
+Contact
+Pour toute question, problème ou suggestion, merci de me contacter via GitHub ou mail.
+
+Merci pour votre attention !
+Mohamed BOUKHATEM
+BTS SIO SLAM 2025
+
