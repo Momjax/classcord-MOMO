@@ -1,4 +1,4 @@
-ClassCord Client – Projet BTS SIO SLAM 2025
+# ClassCord Client – Projet BTS SIO SLAM 2025
 Auteur : Mohamed BOUKHATEM
 Option : BTS SIO - SLAM
 Dépôt GitHub : https://github.com/Momjax/classcord-MOMO
@@ -57,7 +57,7 @@ Bibliothèque JSON (org.json) dans le classpath (gérée via Maven)
 Serveur ClassCord accessible (adresse IP + port)
 
 Déroulement du projet – Planning détaillé
-Jour 1 - Lundi : Mise en place du projet et modélisation
+# Jour 1 - Lundi : Mise en place du projet et modélisation
 Création du projet Maven sous VSCode
 
 Ajout de la dépendance org.json dans pom.xml
@@ -68,7 +68,7 @@ Implémentation des classes métier User et Message
 
 Vérification de la compilation et test minimal (Hello ClassCord)
 
-Jour 2 - Mardi : Connexion au serveur et chat en mode invité
+# Jour 2 - Mardi : Connexion au serveur et chat en mode invité
 Création de la classe ClientInvite pour la connexion TCP
 
 Envoi et réception de messages JSON en mode invité
@@ -77,7 +77,7 @@ Affichage des messages reçus dans la console ou UI Swing basique
 
 Thread dédié à la réception des messages pour éviter le blocage
 
-Jour 3 - Mercredi : Authentification et gestion des comptes
+# Jour 3 - Mercredi : Authentification et gestion des comptes
 Implémentation des fenêtres d'inscription et connexion (Swing)
 
 Envoi des identifiants (login/register) au serveur via JSON
@@ -86,14 +86,14 @@ Affichage dynamique des erreurs ou succès reçus
 
 Passage fluide vers la fenêtre de chat après authentification réussie
 
-Jour 4 - Jeudi : Messages privés et liste des utilisateurs
+# Jour 4 - Jeudi : Messages privés et liste des utilisateurs
 Récupération et affichage dynamique de la liste des utilisateurs connectés avec leur statut
 
 Gestion de l’envoi de messages privés ciblés
 
 Affichage différencié des messages privés et globaux dans l’interface
 
-Jour 5 - Vendredi : Gestion des statuts et finalisation
+# Jour 5 - Vendredi : Gestion des statuts et finalisation
 Ajout d’un menu pour changer le statut utilisateur (disponible, absent, invisible)
 
 Envoi et affichage des statuts dans la liste des utilisateurs
